@@ -5,10 +5,10 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.omnaest.utils.table.Row;
 import org.omnaest.utils.table.Table;
 import org.omnaest.utils.table.components.TableIndex;
 import org.omnaest.utils.table.components.TableTranslator;
+import org.omnaest.utils.table.domain.Row;
 
 public class TableTranslatorImpl implements TableTranslator
 {

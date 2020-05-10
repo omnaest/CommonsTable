@@ -2,7 +2,7 @@ package org.omnaest.utils.table.components;
 
 import java.util.Optional;
 
-import org.omnaest.utils.table.Row;
+import org.omnaest.utils.table.domain.Row;
 
 public interface TableIndex
 {

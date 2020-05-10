@@ -1,5 +1,7 @@
 package org.omnaest.utils.table.internal;
 
+import java.util.Arrays;
+
 public class TableData
 {
     private String[][] data            = new String[1][1];
@@ -130,4 +132,47 @@ public class TableData
         }
         return result;
     }
+
+    @Override
+    public int hashCode()
+    {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + Arrays.deepHashCode(this.data);
+        result = prime * result + this.numberOfColumns;
+        result = prime * result + this.numberOfRows;
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (this == obj)
+        {
+            return true;
+        }
+        if (obj == null)
+        {
+            return false;
+        }
+        if (this.getClass() != obj.getClass())
+        {
+            return false;
+        }
+        TableData other = (TableData) obj;
+        if (!Arrays.deepEquals(this.data, other.data))
+        {
+            return false;
+        }
+        if (this.numberOfColumns != other.numberOfColumns)
+        {
+            return false;
+        }
+        if (this.numberOfRows != other.numberOfRows)
+        {
+            return false;
+        }
+        return true;
+    }
+
 }

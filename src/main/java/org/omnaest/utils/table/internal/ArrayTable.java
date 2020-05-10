@@ -13,12 +13,13 @@ import java.util.stream.Stream;
 
 import org.omnaest.utils.JSONHelper;
 import org.omnaest.utils.StringUtils;
-import org.omnaest.utils.table.Cell;
-import org.omnaest.utils.table.Column;
-import org.omnaest.utils.table.Row;
 import org.omnaest.utils.table.Table;
+import org.omnaest.utils.table.components.TableDeserializer;
 import org.omnaest.utils.table.components.TableSerializer;
 import org.omnaest.utils.table.components.TableTranslator;
+import org.omnaest.utils.table.domain.Cell;
+import org.omnaest.utils.table.domain.Column;
+import org.omnaest.utils.table.domain.Row;
 
 public class ArrayTable implements Table
 {
@@ -444,6 +445,75 @@ public class ArrayTable implements Table
                 return ArrayTable.this;
             }
         };
+    }
+
+    @Override
+    public TableDeserializer deserialize()
+    {
+        return new TableDeserializerImpl(this);
+    }
+
+    @Override
+    public int hashCode()
+    {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((this.columnIndex == null) ? 0 : this.columnIndex.hashCode());
+        result = prime * result + ((this.data == null) ? 0 : this.data.hashCode());
+        result = prime * result + ((this.rowIndex == null) ? 0 : this.rowIndex.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (this == obj)
+        {
+            return true;
+        }
+        if (obj == null)
+        {
+            return false;
+        }
+        if (this.getClass() != obj.getClass())
+        {
+            return false;
+        }
+        ArrayTable other = (ArrayTable) obj;
+        if (this.columnIndex == null)
+        {
+            if (other.columnIndex != null)
+            {
+                return false;
+            }
+        }
+        else if (!this.columnIndex.equals(other.columnIndex))
+        {
+            return false;
+        }
+        if (this.data == null)
+        {
+            if (other.data != null)
+            {
+                return false;
+            }
+        }
+        else if (!this.data.equals(other.data))
+        {
+            return false;
+        }
+        if (this.rowIndex == null)
+        {
+            if (other.rowIndex != null)
+            {
+                return false;
+            }
+        }
+        else if (!this.rowIndex.equals(other.rowIndex))
+        {
+            return false;
+        }
+        return true;
     }
 
 }

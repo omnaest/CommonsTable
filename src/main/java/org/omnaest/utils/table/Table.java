@@ -5,6 +5,9 @@ import java.util.Map;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+import org.omnaest.utils.table.components.TableDeserializer;
+import org.omnaest.utils.table.domain.Column;
+import org.omnaest.utils.table.domain.Row;
 import org.omnaest.utils.table.internal.ArrayTable;
 
 public interface Table extends ImmutableTable
@@ -49,7 +52,18 @@ public interface Table extends ImmutableTable
         public Table fromRows(Iterable<Map<String, String>> rows);
     }
 
+    /**
+     * @see #deserialize()
+     * @return
+     */
     public TableDataLoader load();
+
+    /**
+     * @see #load()
+     * @see #serialize()
+     * @return
+     */
+    public TableDeserializer deserialize();
 
     public static Table newInstance()
     {

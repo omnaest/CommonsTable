@@ -113,4 +113,19 @@ public class ArrayTableTest
 
     }
 
+    @Test
+    public void testDeserialize() throws Exception
+    {
+        Table table = Table.newInstance()
+                           .addColumnTitles("column1", "column2")
+                           .addRow("0.0", "0.1")
+                           .addRow("1.0", "1.1");
+        String csv = table.serialize()
+                          .asCsv();
+        Table tableDeserialized = Table.newInstance()
+                                       .deserialize()
+                                       .fromCsv(csv);
+        assertEquals(table, tableDeserialized);
+    }
+
 }

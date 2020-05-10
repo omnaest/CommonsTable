@@ -68,4 +68,55 @@ public class KeyIndex
         return this.keyIndex.containsKey(key);
     }
 
+    @Override
+    public int hashCode()
+    {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((this.keyIndex == null) ? 0 : this.keyIndex.hashCode());
+        result = prime * result + ((this.keys == null) ? 0 : this.keys.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (this == obj)
+        {
+            return true;
+        }
+        if (obj == null)
+        {
+            return false;
+        }
+        if (this.getClass() != obj.getClass())
+        {
+            return false;
+        }
+        KeyIndex other = (KeyIndex) obj;
+        if (this.keyIndex == null)
+        {
+            if (other.keyIndex != null)
+            {
+                return false;
+            }
+        }
+        else if (!this.keyIndex.equals(other.keyIndex))
+        {
+            return false;
+        }
+        if (this.keys == null)
+        {
+            if (other.keys != null)
+            {
+                return false;
+            }
+        }
+        else if (!this.keys.equals(other.keys))
+        {
+            return false;
+        }
+        return true;
+    }
+
 }

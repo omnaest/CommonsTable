@@ -4,9 +4,15 @@ import java.util.List;
 
 import org.omnaest.utils.table.components.TableSerializer;
 import org.omnaest.utils.table.components.TableTranslator;
+import org.omnaest.utils.table.domain.Row;
 
 public interface ImmutableTable extends Iterable<Row>
 {
+    /**
+     * @see #as()
+     * @see Table#deserialize()
+     * @return
+     */
     public TableSerializer serialize();
 
     public List<String> getColumnTitles();
@@ -17,5 +23,9 @@ public interface ImmutableTable extends Iterable<Row>
 
     public int getRowSize();
 
+    /**
+     * @see #serialize()
+     * @return
+     */
     public TableTranslator as();
 }

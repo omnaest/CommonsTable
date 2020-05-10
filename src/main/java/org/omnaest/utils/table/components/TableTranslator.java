@@ -3,7 +3,7 @@ package org.omnaest.utils.table.components;
 import java.util.Map;
 import java.util.function.Function;
 
-import org.omnaest.utils.table.Row;
+import org.omnaest.utils.table.domain.Row;
 
 public interface TableTranslator
 {

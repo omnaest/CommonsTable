@@ -1,4 +1,4 @@
-package org.omnaest.utils.table;
+package org.omnaest.utils.table.domain;
 
 import java.util.List;
 import java.util.Map;

@@ -4,13 +4,14 @@ import java.util.List;
 
 import org.apache.commons.csv.CSVFormat;
 import org.omnaest.utils.csv.CSVUtils;
-import org.omnaest.utils.table.Row;
 import org.omnaest.utils.table.Table;
 import org.omnaest.utils.table.components.TableSerializer;
+import org.omnaest.utils.table.domain.Row;
 
 public class TableSerializerImpl implements TableSerializer
 {
-    private Table table;
+    protected static final CSVFormat DEFAULT_CSV_FORMAT = CSVFormat.EXCEL.withDelimiter(';');
+    private Table                    table;
 
     public TableSerializerImpl(Table table)
     {
@@ -22,7 +23,7 @@ public class TableSerializerImpl implements TableSerializer
     {
         return CSVUtils.serializer()
                        .withHeaders(this.getColumnTitles())
-                       .withCSVFormat(CSVFormat.EXCEL.withDelimiter(';'))
+                       .withCSVFormat(DEFAULT_CSV_FORMAT)
                        .intoString(this.table.getRows()
                                              .stream()
                                              .map(Row::asMap));
@@ -30,8 +31,7 @@ public class TableSerializerImpl implements TableSerializer
 
     private List<String> getColumnTitles()
     {
-        List<String> columnTitles = this.table.getColumnTitles();
-        return columnTitles;
+        return this.table.getColumnTitles();
     }
 
 }
