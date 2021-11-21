@@ -15,7 +15,15 @@
  ******************************************************************************/
 package org.omnaest.utils.table.components;
 
+import java.io.File;
+import java.util.function.Supplier;
+
 public interface TableSerializer
 {
-    public String asCsv();
+    public CsvWriter asCsv();
+
+    public static interface CsvWriter extends Supplier<String>
+    {
+        public CsvWriter writeInto(File file);
+    }
 }

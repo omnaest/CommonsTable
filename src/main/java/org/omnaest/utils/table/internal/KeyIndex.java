@@ -20,11 +20,13 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class KeyIndex
 {
-    private List<String>         keys     = new ArrayList<>();
-    private Map<String, Integer> keyIndex = new HashMap<>();
+    private List<String>         keys           = new ArrayList<>();
+    private Map<String, Integer> keyIndex       = new HashMap<>();
+    private int                  maxColumnIndex = -1;
 
     public KeyIndex addKey(String key)
     {
@@ -42,6 +44,7 @@ public class KeyIndex
             this.keyIndex.put(key, index);
             index++;
         }
+        this.maxColumnIndex = Math.max(this.maxColumnIndex, this.keys.size() - 1);
     }
 
     public int getIndex(String key)
@@ -62,6 +65,15 @@ public class KeyIndex
         return this.keys.get(index);
     }
 
+    public Optional<String> getEffectiveKey(int index)
+    {
+        if (index < 0 || index >= this.keys.size())
+        {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(this.keys.get(index));
+    }
+
     public List<String> getKeys()
     {
         return Collections.unmodifiableList(this.keys);
@@ -70,6 +82,16 @@ public class KeyIndex
     public int size()
     {
         return this.keys.size();
+    }
+
+    public int getEffectiveSize()
+    {
+        return this.maxColumnIndex + 1;
+    }
+
+    public void notifyOfColumnIndexWrite(int columnIndex)
+    {
+        this.maxColumnIndex = Math.max(this.maxColumnIndex, columnIndex);
     }
 
     @Override

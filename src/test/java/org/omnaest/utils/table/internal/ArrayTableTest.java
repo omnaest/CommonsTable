@@ -20,9 +20,12 @@ import static org.junit.Assert.assertEquals;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.junit.Test;
 import org.omnaest.utils.table.Table;
+import org.omnaest.utils.table.domain.Cell;
+import org.omnaest.utils.table.domain.Column;
 
 public class ArrayTableTest
 {
@@ -42,7 +45,8 @@ public class ArrayTableTest
                                                               .asList());
 
         String csv = table.serialize()
-                          .asCsv();
+                          .asCsv()
+                          .get();
         //        System.out.println(csv);
         StringBuilder csvExpected = new StringBuilder();
         csvExpected.append("column1;column2;column3");
@@ -136,11 +140,61 @@ public class ArrayTableTest
                            .addRow("0.0", "0.1")
                            .addRow("1.0", "1.1");
         String csv = table.serialize()
-                          .asCsv();
+                          .asCsv()
+                          .get();
         Table tableDeserialized = Table.newInstance()
                                        .deserialize()
                                        .fromCsv(csv);
         assertEquals(table, tableDeserialized);
+    }
+
+    @Test
+    public void testGetEffectiveColumns() throws Exception
+    {
+        Table table = Table.newInstance()
+                           .addRow("a1", "b1")
+                           .addRow("a2", "b2", "c2");
+        assertEquals(3, table.getEffectiveColumns()
+                             .size());
+        assertEquals(Arrays.asList(null, null, null), table.getEffectiveColumns()
+                                                           .stream()
+                                                           .map(Column::getTitle)
+                                                           .collect(Collectors.toList()));
+        assertEquals(Arrays.asList("a1", "a2"), table.getEffectiveColumns()
+                                                     .stream()
+                                                     .findFirst()
+                                                     .map(Column::getCells)
+                                                     .map(List::stream)
+                                                     .orElse(Stream.empty())
+                                                     .map(Cell::getValue)
+                                                     .collect(Collectors.toList()));
+        assertEquals(Arrays.asList(null, "c2"), table.getEffectiveColumns()
+                                                     .stream()
+                                                     .skip(2)
+                                                     .findFirst()
+                                                     .map(Column::getCells)
+                                                     .map(List::stream)
+                                                     .orElse(Stream.empty())
+                                                     .map(Cell::getValue)
+                                                     .collect(Collectors.toList()));
+    }
+
+    @Test
+    public void testRowAsList() throws Exception
+    {
+        Table table = Table.newInstance()
+                           .addColumnTitles("column1", "column2")
+                           .addRow("a1")
+                           .addRow("a2", "b2");
+        assertEquals(Arrays.asList("a1", null), table.stream()
+                                                     .findFirst()
+                                                     .get()
+                                                     .asList());
+        assertEquals(Arrays.asList("a2", "b2"), table.stream()
+                                                     .skip(1)
+                                                     .findFirst()
+                                                     .get()
+                                                     .asList());
     }
 
 }

@@ -23,12 +23,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import org.omnaest.utils.JSONHelper;
-import org.omnaest.utils.StringUtils;
 import org.omnaest.utils.table.Table;
 import org.omnaest.utils.table.components.TableDeserializer;
 import org.omnaest.utils.table.components.TableSerializer;
@@ -149,7 +149,9 @@ public class ArrayTable implements Table
             Map<String, String> map = new LinkedHashMap<>();
             for (int ii = 0; ii < this.size(); ii++)
             {
-                map.put(StringUtils.defaultIfNull(ArrayTable.this.getColumnTitle(ii), "" + ii), this.getValue(ii));
+                map.put(ArrayTable.this.getColumnTitle(ii)
+                                       .orElse("" + ii),
+                        this.getValue(ii));
             }
             return map;
         }
@@ -185,6 +187,7 @@ public class ArrayTable implements Table
         private Row setValue(int columnIndex, String value)
         {
             ArrayTable.this.data.set(this.rowIndex, columnIndex, value);
+            ArrayTable.this.columnIndex.notifyOfColumnIndexWrite(columnIndex);
             return this;
         }
 
@@ -247,9 +250,9 @@ public class ArrayTable implements Table
         return this;
     }
 
-    public String getColumnTitle(int index)
+    public Optional<String> getColumnTitle(int index)
     {
-        return this.columnIndex.getKey(index);
+        return this.columnIndex.getEffectiveKey(index);
     }
 
     @Override
@@ -335,6 +338,15 @@ public class ArrayTable implements Table
     }
 
     @Override
+    public <E> Table processAndAddRow(Stream<E> elements, BiConsumer<E, Row> elementAndRowConsumer)
+    {
+        Optional.ofNullable(elements)
+                .orElse(Stream.empty())
+                .forEach(element -> elementAndRowConsumer.accept(element, this.newRow()));
+        return this;
+    }
+
+    @Override
     public Row newRow()
     {
         int rowIndex = this.getRowSize();
@@ -376,7 +388,8 @@ public class ArrayTable implements Table
             @Override
             public String getTitle()
             {
-                return ArrayTable.this.getColumnTitle(index);
+                return ArrayTable.this.getColumnTitle(index)
+                                      .orElse(null);
             }
 
             @Override
@@ -409,12 +422,17 @@ public class ArrayTable implements Table
     @Override
     public List<Column> getColumns()
     {
-        List<Column> result = new ArrayList<>();
-        for (int ii = 0; ii < this.columnIndex.size(); ii++)
-        {
-            result.add(this.getColumn(ii));
-        }
-        return result;
+        return IntStream.range(0, this.columnIndex.size())
+                        .mapToObj(this::getColumn)
+                        .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Column> getEffectiveColumns()
+    {
+        return IntStream.range(0, this.columnIndex.getEffectiveSize())
+                        .mapToObj(this::getColumn)
+                        .collect(Collectors.toList());
     }
 
     @Override
@@ -440,7 +458,8 @@ public class ArrayTable implements Table
     public String toString()
     {
         return this.serialize()
-                   .asCsv();
+                   .asCsv()
+                   .get();
     }
 
     @Override
