@@ -19,6 +19,8 @@ public interface Cell
 {
     public String getValue();
 
+    public Cell setValue(String value);
+
     /**
      * Returns true, if the value of the cell is null or an empty string
      * 
@@ -36,4 +38,5 @@ public interface Cell
     public Row getRow();
 
     public Column getColumn();
+
 }

@@ -22,4 +22,8 @@ public interface Column
     public String getTitle();
 
     public List<Cell> getCells();
+
+    public List<String> getValues();
+
+    public boolean containsValue(String value);
 }

@@ -18,7 +18,9 @@ package org.omnaest.utils.table.components;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
+import org.omnaest.utils.table.Table;
 import org.omnaest.utils.table.domain.Row;
 
 public interface TableTranslator
@@ -28,12 +30,16 @@ public interface TableTranslator
     public <K, V> Map<K, V> map(Function<Row, K> keyMapper, Function<Row, V> valueMapper);
 
     /**
-     * Returns a {@link TableIndex} on the given column
+     * Returns a {@link TableColumnIndex} on the given column
      * 
      * @param columnTitle
      * @return
      */
-    public TableIndex index(String columnTitle);
+    public TableColumnIndex indexOfColumn(String columnTitle);
 
-    <K, V> Map<K, List<V>> group(Function<Row, K> keyMapper, Function<Row, V> valueMapper);
+    public <K, V> Map<K, List<V>> group(Function<Row, K> keyMapper, Function<Row, V> valueMapper);
+
+    public Table tableWithUniqueRows();
+
+    public Table filteredTable(Predicate<Row> rowInclusionFilter);
 }

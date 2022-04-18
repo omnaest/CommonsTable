@@ -17,10 +17,12 @@ package org.omnaest.utils.table;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+import org.omnaest.utils.element.bi.BiElement;
 import org.omnaest.utils.table.components.TableDeserializer;
 import org.omnaest.utils.table.domain.Column;
 import org.omnaest.utils.table.domain.Row;
@@ -30,7 +32,15 @@ public interface Table extends ImmutableTable
 {
     public Table addRow(String... values);
 
-    public Table addRow(List<String> values);
+    public Table addRow(Iterable<String> values);
+
+    /**
+     * Similar to {@link #addRow(Iterable)}, adding both {@link BiElement} values.
+     * 
+     * @param tuple
+     * @return
+     */
+    public Table addRow(BiElement<String, String> tuple);
 
     /**
      * Adds a new {@link Row} based on the given {@link Map} that represents the row entry. All keys are column fields. If a key is not yet known to the
@@ -70,6 +80,8 @@ public interface Table extends ImmutableTable
      * @return
      */
     public List<Column> getColumns();
+
+    public Optional<Column> getColumn(String columnTitle);
 
     /**
      * Returns the effective {@link Column}s of the {@link Table}. This includes pseudo {@link Column}s that have been created due to a writing of a cell/value

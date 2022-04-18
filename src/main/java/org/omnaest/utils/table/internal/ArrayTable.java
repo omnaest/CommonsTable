@@ -28,7 +28,10 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import org.apache.commons.lang3.StringUtils;
 import org.omnaest.utils.JSONHelper;
+import org.omnaest.utils.element.bi.BiElement;
+import org.omnaest.utils.element.bi.UnaryBiElement;
 import org.omnaest.utils.table.Table;
 import org.omnaest.utils.table.components.TableDeserializer;
 import org.omnaest.utils.table.components.TableSerializer;
@@ -62,7 +65,7 @@ public class ArrayTable implements Table
         }
 
         @Override
-        public Row addValues(List<String> values)
+        public Row addValues(Iterable<String> values)
         {
             Optional.ofNullable(values)
                     .ifPresent(list -> list.forEach(this::addValue));
@@ -98,6 +101,20 @@ public class ArrayTable implements Table
                 public String getValue()
                 {
                     return columnIndex >= 0 && columnIndex < RowImpl.this.size() ? ArrayTable.this.data.get(RowImpl.this.rowIndex, columnIndex) : null;
+                }
+
+                @Override
+                public Cell setValue(String value)
+                {
+                    if (columnIndex >= 0)
+                    {
+                        RowImpl.this.setValue(columnIndex, value);
+                    }
+                    else
+                    {
+                        throw new IndexOutOfBoundsException("Column index: " + columnIndex);
+                    }
+                    return this;
                 }
 
                 @Override
@@ -159,17 +176,47 @@ public class ArrayTable implements Table
         @Override
         public String getValue(int columnIndex)
         {
+            this.validateColumnIndex(columnIndex);
+            return this.getOptionalValue(columnIndex)
+                       .orElse(null);
+        }
+
+        private void validateColumnIndex(int columnIndex)
+        {
             if (columnIndex < 0 && columnIndex >= this.size())
             {
                 throw new IndexOutOfBoundsException();
             }
-            return ArrayTable.this.data.get(this.rowIndex, columnIndex);
+        }
+
+        @Override
+        public Optional<String> getOptionalValue(int columnIndex)
+        {
+            if (columnIndex < 0 && columnIndex >= this.size())
+            {
+                return Optional.empty();
+            }
+            try
+            {
+                return Optional.ofNullable(ArrayTable.this.data.get(this.rowIndex, columnIndex));
+            }
+            catch (IndexOutOfBoundsException e)
+            {
+                return Optional.empty();
+            }
         }
 
         @Override
         public String getValue(String columnTitle)
         {
-            return this.getValue(ArrayTable.this.columnIndex.getIndex(columnTitle));
+            return this.getOptionalValue(ArrayTable.this.columnIndex.getIndex(columnTitle))
+                       .orElse(null);
+        }
+
+        @Override
+        public Optional<String> getOptionalValue(String columnTitle)
+        {
+            return this.getOptionalValue(ArrayTable.this.columnIndex.getIndex(columnTitle));
         }
 
         @Override
@@ -308,11 +355,21 @@ public class ArrayTable implements Table
     }
 
     @Override
-    public Table addRow(List<String> values)
+    public Table addRow(Iterable<String> values)
     {
         this.newRow()
-            .addValues(values);
+            .addValues(Optional.ofNullable(values)
+                               .orElse(Collections.emptyList()));
         return this;
+    }
+
+    @Override
+    public Table addRow(BiElement<String, String> tuple)
+    {
+        return this.addRow(Optional.ofNullable(tuple)
+                                   .map(BiElement<String, String>::asUnary)
+                                   .map(UnaryBiElement<String>::asList)
+                                   .orElse(Collections.emptyList()));
     }
 
     @Override
@@ -404,6 +461,23 @@ public class ArrayTable implements Table
 
                 return result;
             }
+
+            @Override
+            public List<String> getValues()
+            {
+                return this.getCells()
+                           .stream()
+                           .map(Cell::getValue)
+                           .collect(Collectors.toList());
+            }
+
+            @Override
+            public boolean containsValue(String value)
+            {
+                return this.getValues()
+                           .contains(value);
+            }
+
         };
     }
 
@@ -425,6 +499,15 @@ public class ArrayTable implements Table
         return IntStream.range(0, this.columnIndex.size())
                         .mapToObj(this::getColumn)
                         .collect(Collectors.toList());
+    }
+
+    @Override
+    public Optional<Column> getColumn(String columnTitle)
+    {
+        return this.getColumns()
+                   .stream()
+                   .filter(column -> StringUtils.equals(columnTitle, column.getTitle()))
+                   .findFirst();
     }
 
     @Override

@@ -17,6 +17,7 @@ package org.omnaest.utils.table.domain;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 public interface Row extends Iterable<String>
@@ -31,13 +32,17 @@ public interface Row extends Iterable<String>
 
     public String getSecondValue();
 
+    public Optional<String> getOptionalValue(String columnTitle);
+
+    public Optional<String> getOptionalValue(int columnIndex);
+
     public Map<String, String> asMap();
 
     public Row addValue(String value);
 
     public Row addValues(String... values);
 
-    public Row addValues(List<String> values);
+    public Row addValues(Iterable<String> values);
 
     public Cell getCell(int index);
 

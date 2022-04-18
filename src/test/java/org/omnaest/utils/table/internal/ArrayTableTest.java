@@ -197,4 +197,49 @@ public class ArrayTableTest
                                                      .asList());
     }
 
+    @Test
+    public void testUniqueRows()
+    {
+        assertEquals(Table.newInstance()
+                          .addRow("a", "b")
+                          .addRow("c", "d")
+                          .addRow("a", "c"),
+                     Table.newInstance()
+                          .addRow("a", "b")
+                          .addRow("c", "d")
+                          .addRow("a", "b")
+                          .addRow("a", "c")
+                          .as()
+                          .tableWithUniqueRows());
+        assertEquals(Table.newInstance()
+                          .addColumnTitles("c1", "c2"),
+                     Table.newInstance()
+                          .addColumnTitles("c1", "c2")
+                          .as()
+                          .tableWithUniqueRows());
+    }
+
+    @Test
+    public void testFilteredTable()
+    {
+        assertEquals(Table.newInstance()
+                          .addRow("a", "b")
+                          .addRow("a", "b")
+                          .addRow("a", "c"),
+                     Table.newInstance()
+                          .addRow("a", "b")
+                          .addRow("c", "d")
+                          .addRow("a", "b")
+                          .addRow("a", "c")
+                          .as()
+                          .filteredTable(row -> row.getFirstValue()
+                                                   .equals("a")));
+        assertEquals(Table.newInstance()
+                          .addColumnTitles("c1", "c2"),
+                     Table.newInstance()
+                          .addColumnTitles("c1", "c2")
+                          .as()
+                          .filteredTable(row -> true));
+    }
+
 }

@@ -20,9 +20,11 @@ import java.util.stream.Stream;
 
 import org.omnaest.utils.table.domain.Row;
 
-public interface TableIndex
+public interface TableColumnIndex
 {
     public Optional<Row> getRowByValue(String value);
 
-    Stream<Row> getRowsByValue(String value);
+    public Stream<Row> getRowsByValue(String value);
+
+    public boolean containsValue(String value);
 }

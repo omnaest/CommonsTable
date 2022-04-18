@@ -19,11 +19,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.omnaest.utils.PredicateUtils;
 import org.omnaest.utils.table.Table;
-import org.omnaest.utils.table.components.TableIndex;
+import org.omnaest.utils.table.components.TableColumnIndex;
 import org.omnaest.utils.table.components.TableTranslator;
 import org.omnaest.utils.table.domain.Row;
 
@@ -59,11 +61,11 @@ public class TableTranslatorImpl implements TableTranslator
     }
 
     @Override
-    public TableIndex index(String columnTitle)
+    public TableColumnIndex indexOfColumn(String columnTitle)
     {
         Map<String, List<Row>> map = this.group(row -> row.getValue(columnTitle), row -> row);
 
-        return new TableIndex()
+        return new TableColumnIndex()
         {
             @Override
             public Optional<Row> getRowByValue(String value)
@@ -79,7 +81,39 @@ public class TableTranslatorImpl implements TableTranslator
                                .map(List::stream)
                                .orElse(Stream.empty());
             }
+
+            @Override
+            public boolean containsValue(String value)
+            {
+                return this.getRowByValue(value)
+                           .isPresent();
+            }
         };
+    }
+
+    @Override
+    public Table tableWithUniqueRows()
+    {
+        Table result = Table.newInstance()
+                            .addColumnTitles(this.table.getColumnTitles());
+        this.table.stream()
+                  .map(Row::asList)
+                  .distinct()
+                  .forEach(result::addRow);
+        return result;
+    }
+
+    @Override
+    public Table filteredTable(Predicate<Row> rowInclusionFilter)
+    {
+        Table result = Table.newInstance()
+                            .addColumnTitles(this.table.getColumnTitles());
+        this.table.stream()
+                  .filter(Optional.ofNullable(rowInclusionFilter)
+                                  .orElse(PredicateUtils.allMatching()))
+                  .map(Row::asList)
+                  .forEach(result::addRow);
+        return result;
     }
 
 }
