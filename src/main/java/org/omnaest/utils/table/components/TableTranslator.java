@@ -42,4 +42,11 @@ public interface TableTranslator
     public Table tableWithUniqueRows();
 
     public Table filteredTable(Predicate<Row> rowInclusionFilter);
+
+    public <C extends Comparable<C>> Table sortedBy(Function<Row, C> rowSortingFunction, SortOrder sortOrder);
+
+    public static enum SortOrder
+    {
+        ASCENDING, DESCENDING
+    }
 }

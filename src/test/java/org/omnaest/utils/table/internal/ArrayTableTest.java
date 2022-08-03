@@ -24,8 +24,10 @@ import java.util.stream.Stream;
 
 import org.junit.Test;
 import org.omnaest.utils.table.Table;
+import org.omnaest.utils.table.components.TableTranslator.SortOrder;
 import org.omnaest.utils.table.domain.Cell;
 import org.omnaest.utils.table.domain.Column;
+import org.omnaest.utils.table.domain.Row;
 
 public class ArrayTableTest
 {
@@ -240,6 +242,31 @@ public class ArrayTableTest
                           .addColumnTitles("c1", "c2")
                           .as()
                           .filteredTable(row -> true));
+    }
+
+    @Test
+    public void testSortedTable()
+    {
+        assertEquals(Table.newInstance()
+                          .addRow("a", "c")
+                          .addRow("b", "b")
+                          .addRow("c", "a"),
+                     Table.newInstance()
+                          .addRow("b", "b")
+                          .addRow("c", "a")
+                          .addRow("a", "c")
+                          .as()
+                          .sortedBy(row -> row.getFirstValue(), SortOrder.ASCENDING));
+        assertEquals(Table.newInstance()
+                          .addRow("c", "a")
+                          .addRow("b", "b")
+                          .addRow("a", "c"),
+                     Table.newInstance()
+                          .addRow("b", "b")
+                          .addRow("c", "a")
+                          .addRow("a", "c")
+                          .as()
+                          .sortedBy(Row::getFirstValue, SortOrder.DESCENDING));
     }
 
 }

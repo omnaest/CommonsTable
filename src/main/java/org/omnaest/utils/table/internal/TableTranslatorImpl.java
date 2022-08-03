@@ -23,6 +23,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.omnaest.utils.ComparatorUtils;
 import org.omnaest.utils.PredicateUtils;
 import org.omnaest.utils.table.Table;
 import org.omnaest.utils.table.components.TableColumnIndex;
@@ -100,6 +101,7 @@ public class TableTranslatorImpl implements TableTranslator
                   .map(Row::asList)
                   .distinct()
                   .forEach(result::addRow);
+
         return result;
     }
 
@@ -113,6 +115,26 @@ public class TableTranslatorImpl implements TableTranslator
                                   .orElse(PredicateUtils.allMatching()))
                   .map(Row::asList)
                   .forEach(result::addRow);
+
+        return result;
+    }
+
+    @Override
+    public <C extends Comparable<C>> Table sortedBy(Function<Row, C> rowSortingFunction, SortOrder sortOrder)
+    {
+        Table result = Table.newInstance()
+                            .addColumnTitles(this.table.getColumnTitles());
+        this.table.stream()
+                  .sorted(SortOrder.ASCENDING.equals(sortOrder) ? ComparatorUtils.builder()
+                                                                                 .of(rowSortingFunction)
+                                                                                 .natural()
+                          : ComparatorUtils.builder()
+                                           .of(rowSortingFunction)
+                                           .natural()
+                                           .reversed())
+                  .map(Row::asList)
+                  .forEach(result::addRow);
+
         return result;
     }
 
