@@ -15,9 +15,15 @@
  ******************************************************************************/
 package org.omnaest.utils.table.domain;
 
+import java.util.Optional;
+
 public interface Cell
 {
     public String getValue();
+
+    public Optional<String> getOptionalValue();
+
+    public Optional<ValueAccessor> getOptionalValueAs();
 
     public Cell setValue(String value);
 
@@ -38,5 +44,9 @@ public interface Cell
     public Row getRow();
 
     public Column getColumn();
+
+    boolean exists();
+
+    boolean isNotNull();
 
 }

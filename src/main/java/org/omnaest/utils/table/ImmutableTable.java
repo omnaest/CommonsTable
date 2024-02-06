@@ -19,6 +19,7 @@ import java.util.List;
 
 import org.omnaest.utils.table.components.TableSerializer;
 import org.omnaest.utils.table.components.TableTranslator;
+import org.omnaest.utils.table.domain.Column;
 import org.omnaest.utils.table.domain.Row;
 
 public interface ImmutableTable extends Iterable<Row>
@@ -30,7 +31,21 @@ public interface ImmutableTable extends Iterable<Row>
      */
     public TableSerializer serialize();
 
+    /**
+     * Returns all explicitly created {@link Column} titles.
+     * 
+     * @see #getEffectiveColumnTitles()
+     * @return
+     */
     public List<String> getColumnTitles();
+
+    /**
+     * Returns all {@link Column} titles, even the ones that were implicitly created.
+     * 
+     * @see #getColumnTitles()
+     * @return
+     */
+    public List<String> getEffectiveColumnTitles();
 
     public String getValue(int rowIndex, int columnIndex);
 

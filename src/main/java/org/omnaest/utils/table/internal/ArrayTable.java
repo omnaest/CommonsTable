@@ -24,11 +24,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.omnaest.utils.JSONHelper;
 import org.omnaest.utils.element.bi.BiElement;
 import org.omnaest.utils.element.bi.UnaryBiElement;
@@ -39,6 +42,7 @@ import org.omnaest.utils.table.components.TableTranslator;
 import org.omnaest.utils.table.domain.Cell;
 import org.omnaest.utils.table.domain.Column;
 import org.omnaest.utils.table.domain.Row;
+import org.omnaest.utils.table.domain.ValueAccessor;
 
 public class ArrayTable implements Table
 {
@@ -57,10 +61,16 @@ public class ArrayTable implements Table
         }
 
         @Override
+        public int getRowIndex()
+        {
+            return this.rowIndex;
+        }
+
+        @Override
         public Row addValues(String... values)
         {
             return this.addValues(Optional.ofNullable(values)
-                                          .map(array -> Arrays.asList(array))
+                                          .map(Arrays::asList)
                                           .orElse(Collections.emptyList()));
         }
 
@@ -69,6 +79,29 @@ public class ArrayTable implements Table
         {
             Optional.ofNullable(values)
                     .ifPresent(list -> list.forEach(this::addValue));
+            return this;
+        }
+
+        @Override
+        public Row setValues(String... values)
+        {
+            return this.setValues(Optional.ofNullable(values)
+                                          .map(Arrays::asList)
+                                          .orElse(Collections.emptyList()));
+        }
+
+        @Override
+        public Row setValues(Iterable<String> values)
+        {
+            Optional.ofNullable(values)
+                    .ifPresent(list ->
+                    {
+                        int columnIndex = 0;
+                        for (String value : values)
+                        {
+                            this.setValue(columnIndex++, value);
+                        }
+                    });
             return this;
         }
 
@@ -100,7 +133,39 @@ public class ArrayTable implements Table
                 @Override
                 public String getValue()
                 {
-                    return columnIndex >= 0 && columnIndex < RowImpl.this.size() ? ArrayTable.this.data.get(RowImpl.this.rowIndex, columnIndex) : null;
+                    return this.exists() ? ArrayTable.this.data.get(RowImpl.this.rowIndex, columnIndex) : null;
+                }
+
+                @Override
+                public Optional<String> getOptionalValue()
+                {
+                    return Optional.ofNullable(this.getValue());
+                }
+
+                @Override
+                public Optional<ValueAccessor> getOptionalValueAs()
+                {
+                    return this.getOptionalValue()
+                               .map(value -> new ValueAccessor()
+                               {
+                                   @Override
+                                   public int intValue()
+                                   {
+                                       return NumberUtils.toInt(value);
+                                   }
+
+                                   @Override
+                                   public double doubleValue()
+                                   {
+                                       return NumberUtils.toDouble(value);
+                                   }
+
+                                   @Override
+                                   public boolean booleanValue()
+                                   {
+                                       return BooleanUtils.toBoolean(value);
+                                   }
+                               });
                 }
 
                 @Override
@@ -140,6 +205,18 @@ public class ArrayTable implements Table
                 {
                     return org.apache.commons.lang3.StringUtils.isBlank(this.getValue());
                 }
+
+                @Override
+                public boolean isNotNull()
+                {
+                    return this.getValue() != null;
+                }
+
+                @Override
+                public boolean exists()
+                {
+                    return columnIndex >= 0 && columnIndex < RowImpl.this.size();
+                }
             };
         }
 
@@ -147,6 +224,42 @@ public class ArrayTable implements Table
         public Cell getCell(String columnTitle)
         {
             return this.getCell(ArrayTable.this.columnIndex.getIndex(columnTitle));
+        }
+
+        @Override
+        public Cell getCellOrNew(String columnTitle)
+        {
+            return this.getCell(ArrayTable.this.columnIndex.getIndexAsOptional(columnTitle)
+                                                           .orElseGet(() -> ArrayTable.this.columnIndex.addKey(columnTitle)
+                                                                                                       .getIndex(columnTitle)));
+        }
+
+        @Override
+        public Optional<Cell> getOptionalCell(String columnTitle)
+        {
+            return ArrayTable.this.columnIndex.getIndexAsOptional(columnTitle)
+                                              .map(this::getCell);
+        }
+
+        @Override
+        public Optional<Cell> getOptionalCell(int columnIndex)
+        {
+            return Optional.of(this.getCell(columnIndex))
+                           .filter(Cell::exists);
+        }
+
+        @Override
+        public Optional<ValueAccessor> getOptionalValueAs(String columnTitle)
+        {
+            return this.getOptionalCell(columnTitle)
+                       .flatMap(Cell::getOptionalValueAs);
+        }
+
+        @Override
+        public Optional<ValueAccessor> getOptionalValueAs(int columnIndex)
+        {
+            return this.getOptionalCell(columnIndex)
+                       .flatMap(Cell::getOptionalValueAs);
         }
 
         @Override
@@ -216,7 +329,8 @@ public class ArrayTable implements Table
         @Override
         public Optional<String> getOptionalValue(String columnTitle)
         {
-            return this.getOptionalValue(ArrayTable.this.columnIndex.getIndex(columnTitle));
+            return ArrayTable.this.columnIndex.getIndexAsOptional(columnTitle)
+                                              .flatMap(this::getOptionalValue);
         }
 
         @Override
@@ -350,7 +464,7 @@ public class ArrayTable implements Table
     public Table addRow(String... values)
     {
         this.newRow()
-            .addValues(values);
+            .setValues(values);
         return this;
     }
 
@@ -358,7 +472,7 @@ public class ArrayTable implements Table
     public Table addRow(Iterable<String> values)
     {
         this.newRow()
-            .addValues(Optional.ofNullable(values)
+            .setValues(Optional.ofNullable(values)
                                .orElse(Collections.emptyList()));
         return this;
     }
@@ -389,7 +503,7 @@ public class ArrayTable implements Table
                 values[index] = value;
             });
             this.newRow()
-                .addValues(values);
+                .setValues(values);
         }
         return this;
     }
@@ -491,6 +605,15 @@ public class ArrayTable implements Table
     public List<String> getColumnTitles()
     {
         return this.columnIndex.getKeys();
+    }
+
+    @Override
+    public List<String> getEffectiveColumnTitles()
+    {
+        return this.getEffectiveColumns()
+                   .stream()
+                   .map(Column::getTitle)
+                   .collect(Collectors.toList());
     }
 
     @Override
@@ -645,6 +768,95 @@ public class ArrayTable implements Table
             return false;
         }
         return true;
+    }
+
+    @Override
+    public TableJoiner join()
+    {
+        Table tableLeft = this;
+        return new TableJoiner()
+        {
+            @Override
+            public <PK> TableJoinerWithLeftColumn<PK> usingColumnFunction(Function<Row, PK> leftColumnFunction)
+            {
+                return new TableJoinerWithLeftColumn<PK>()
+                {
+                    @Override
+                    public TableJoinerWithRightTable<PK> with(Table tableRight)
+                    {
+                        return new TableJoinerWithRightTable<PK>()
+                        {
+
+                            @Override
+                            public <UR> TableJoinerWithRightColumn<PK> usingColumnFunction(Function<Row, PK> rightColumnFunction)
+                            {
+                                return new TableJoinerWithRightColumn<PK>()
+                                {
+                                    @Override
+                                    public Table inner()
+                                    {
+                                        Table result = Table.newInstance();
+                                        if (tableRight != null)
+                                        {
+                                            Map<PK, Row> primaryKeyToRow = tableLeft.as()
+                                                                                    .map(leftColumnFunction, Function.identity());
+                                            List<String> columnTitles = Stream.concat(tableLeft.getColumnTitles()
+                                                                                               .stream(),
+                                                                                      tableRight.getColumnTitles()
+                                                                                                .stream())
+                                                                              .distinct()
+                                                                              .collect(Collectors.toList());
+                                            result.addColumnTitles(columnTitles);
+                                            tableRight.stream()
+                                                      .forEach(rightRow ->
+                                                      {
+                                                          PK primaryKey = rightColumnFunction.apply(rightRow);
+                                                          Row leftRow = primaryKeyToRow.get(primaryKey);
+                                                          if (leftRow != null)
+                                                          {
+                                                              result.addRow(columnTitles.stream()
+                                                                                        .map(columnTitle -> leftRow.getOptionalValue(columnTitle)
+                                                                                                                   .orElseGet(() -> rightRow.getOptionalValue(columnTitle)
+                                                                                                                                            .orElse(null)))
+                                                                                        .collect(Collectors.toList()));
+                                                          }
+                                                      });
+                                        }
+                                        return result;
+                                    }
+                                };
+                            }
+
+                            @SuppressWarnings("unchecked")
+                            @Override
+                            public TableJoinerWithRightColumn<String> usingColumn(String columnTitle)
+                            {
+                                return (TableJoinerWithRightColumn<String>) this.usingColumnFunction(row -> (PK) row.getValue(columnTitle));
+                            }
+
+                            @SuppressWarnings("unchecked")
+                            @Override
+                            public TableJoinerWithRightColumn<Integer> usingRowIndex()
+                            {
+                                return (TableJoinerWithRightColumn<Integer>) this.usingColumnFunction(row -> (PK) Integer.valueOf(row.getRowIndex()));
+                            }
+                        };
+                    }
+                };
+            }
+
+            @Override
+            public TableJoinerWithLeftColumn<String> usingColumn(String columnTitle)
+            {
+                return this.usingColumnFunction(row -> row.getValue(columnTitle));
+            }
+
+            @Override
+            public TableJoinerWithLeftColumn<Integer> usingRowIndex()
+            {
+                return this.usingColumnFunction(Row::getRowIndex);
+            }
+        };
     }
 
 }

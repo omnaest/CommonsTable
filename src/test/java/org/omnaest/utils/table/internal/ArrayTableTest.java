@@ -28,6 +28,7 @@ import org.omnaest.utils.table.components.TableTranslator.SortOrder;
 import org.omnaest.utils.table.domain.Cell;
 import org.omnaest.utils.table.domain.Column;
 import org.omnaest.utils.table.domain.Row;
+import org.omnaest.utils.table.domain.ValueAccessor;
 
 public class ArrayTableTest
 {
@@ -71,6 +72,24 @@ public class ArrayTableTest
                                                               .asList());
         assertEquals(Arrays.asList("4.0", "5.0", "6.0"), table.getRow(1)
                                                               .asList());
+
+    }
+
+    @Test
+    public void testAddRowWithNewColumn() throws Exception
+    {
+        Table table = Table.newInstance()
+                           .processAndAddRow(Arrays.asList("a", "b", "c")
+                                                   .stream(),
+                                             (element, row) -> row.getCellOrNew(element)
+                                                                  .setValue("true"));
+
+        assertEquals(Table.newInstance()
+                          .addColumnTitles("a", "b", "c")
+                          .addRow("true", null, null)
+                          .addRow(null, "true", null)
+                          .addRow(null, null, "true"),
+                     table);
 
     }
 
@@ -200,6 +219,30 @@ public class ArrayTableTest
     }
 
     @Test
+    public void testInnerJoin() throws Exception
+    {
+        Table tableLeft = Table.newInstance()
+                               .addColumnTitles("column1", "column2")
+                               .addRow("a1", "b1")
+                               .addRow("a2", "b2");
+        Table tableRight = Table.newInstance()
+                                .addColumnTitles("column1", "column3")
+                                .addRow("a1", "c1")
+                                .addRow("a2", "c2");
+
+        Table innerJoin = tableLeft.join()
+                                   .usingColumn("column1")
+                                   .with(tableRight)
+                                   .usingColumn("column1")
+                                   .inner();
+        assertEquals(Table.newInstance()
+                          .addColumnTitles("column1", "column2", "column3")
+                          .addRow("a1", "b1", "c1")
+                          .addRow("a2", "b2", "c2"),
+                     innerJoin);
+    }
+
+    @Test
     public void testUniqueRows()
     {
         assertEquals(Table.newInstance()
@@ -267,6 +310,60 @@ public class ArrayTableTest
                           .addRow("a", "c")
                           .as()
                           .sortedBy(Row::getFirstValue, SortOrder.DESCENDING));
+    }
+
+    @Test
+    public void testValueAccessor()
+    {
+        Table table = Table.newInstance()
+                           .addColumnTitles("intColumn", "doubleColumn", "booleanColumn")
+                           .addRow("1", "1.3", "true")
+                           .addRow("", "", "")
+                           .addRow();
+        assertEquals(1, table.getRow(0)
+                             .getOptionalValueAs("intColumn")
+                             .map(ValueAccessor::intValue)
+                             .get()
+                             .intValue());
+        assertEquals(1.3, table.getRow(0)
+                               .getOptionalValueAs("doubleColumn")
+                               .map(ValueAccessor::doubleValue)
+                               .get()
+                               .doubleValue(),
+                     0.01);
+        assertEquals(true, table.getRow(0)
+                                .getOptionalValueAs("booleanColumn")
+                                .map(ValueAccessor::booleanValue)
+                                .get()
+                                .booleanValue());
+        assertEquals(0, table.getRow(1)
+                             .getOptionalValueAs("intColumn")
+                             .map(ValueAccessor::intValue)
+                             .get()
+                             .intValue());
+        assertEquals(0.0, table.getRow(1)
+                               .getOptionalValueAs("doubleColumn")
+                               .map(ValueAccessor::doubleValue)
+                               .get()
+                               .doubleValue(),
+                     0.01);
+        assertEquals(false, table.getRow(1)
+                                 .getOptionalValueAs("booleanColumn")
+                                 .map(ValueAccessor::booleanValue)
+                                 .get()
+                                 .booleanValue());
+        assertEquals(false, table.getRow(2)
+                                 .getOptionalValueAs("intColumn")
+                                 .map(ValueAccessor::intValue)
+                                 .isPresent());
+        assertEquals(false, table.getRow(2)
+                                 .getOptionalValueAs("doubleColumn")
+                                 .map(ValueAccessor::doubleValue)
+                                 .isPresent());
+        assertEquals(false, table.getRow(2)
+                                 .getOptionalValueAs("booleanColumn")
+                                 .map(ValueAccessor::booleanValue)
+                                 .isPresent());
     }
 
 }

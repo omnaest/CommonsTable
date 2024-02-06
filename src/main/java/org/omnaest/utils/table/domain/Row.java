@@ -36,17 +36,37 @@ public interface Row extends Iterable<String>
 
     public Optional<String> getOptionalValue(int columnIndex);
 
+    public Optional<ValueAccessor> getOptionalValueAs(String columnTitle);
+
+    public Optional<ValueAccessor> getOptionalValueAs(int columnIndex);
+
     public Map<String, String> asMap();
 
     public Row addValue(String value);
 
     public Row addValues(String... values);
 
+    public Row setValues(String... values);
+
     public Row addValues(Iterable<String> values);
+
+    public Row setValues(Iterable<String> values);
 
     public Cell getCell(int index);
 
     public Cell getCell(String columnTitle);
+
+    /**
+     * Similar to {@link #getCell(String)} but instead of raising an exception this will create the missing column.
+     * 
+     * @param columnTitle
+     * @return
+     */
+    public Cell getCellOrNew(String columnTitle);
+
+    public Optional<Cell> getOptionalCell(String columnTitle);
+
+    public Optional<Cell> getOptionalCell(int columnIndex);
 
     public List<Cell> getCells();
 
@@ -64,5 +84,7 @@ public interface Row extends Iterable<String>
      * @return
      */
     public int size();
+
+    public int getRowIndex();
 
 }

@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -117,11 +118,40 @@ public interface Table extends ImmutableTable
      */
     public TableDeserializer deserialize();
 
+    public TableJoiner join();
+
+    public static interface TableJoiner
+    {
+        public <PK> TableJoinerWithLeftColumn<PK> usingColumnFunction(Function<Row, PK> primaryKeyFunction);
+
+        public TableJoinerWithLeftColumn<String> usingColumn(String columnTitle);
+
+        public TableJoinerWithLeftColumn<Integer> usingRowIndex();
+    }
+
+    public static interface TableJoinerWithLeftColumn<PK>
+    {
+        public TableJoinerWithRightTable<PK> with(Table tableRight);
+    }
+
+    public static interface TableJoinerWithRightTable<PK>
+    {
+        public <UR> TableJoinerWithRightColumn<PK> usingColumnFunction(Function<Row, PK> columnFunction);
+
+        public TableJoinerWithRightColumn<String> usingColumn(String columnTitle);
+
+        public TableJoinerWithRightColumn<Integer> usingRowIndex();
+    }
+
+    public static interface TableJoinerWithRightColumn<PK>
+    {
+        public Table inner();
+    }
+
     public static Table newInstance()
     {
         return tableSupplier.get();
     }
 
     public static Supplier<Table> tableSupplier = () -> new ArrayTable();
-
 }

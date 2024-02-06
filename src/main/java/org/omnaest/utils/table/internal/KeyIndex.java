@@ -47,13 +47,19 @@ public class KeyIndex
         this.maxColumnIndex = Math.max(this.maxColumnIndex, this.keys.size() - 1);
     }
 
-    public int getIndex(String key)
+    public Optional<Integer> getIndexAsOptional(String key)
     {
         if (!this.keyIndex.containsKey(key))
         {
-            throw new IllegalArgumentException();
+            return Optional.empty();
         }
-        return this.keyIndex.get(key);
+        return Optional.of(this.keyIndex.get(key));
+    }
+
+    public int getIndex(String key)
+    {
+        return this.getIndexAsOptional(key)
+                   .orElseThrow(() -> new IllegalArgumentException());
     }
 
     public String getKey(int index)
