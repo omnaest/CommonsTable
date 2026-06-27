@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -32,7 +33,8 @@ import java.util.stream.Stream;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
-import org.omnaest.utils.JSONHelper;
+import org.omnaest.utils.JsonUtils;
+import org.omnaest.utils.ListUtils;
 import org.omnaest.utils.element.bi.BiElement;
 import org.omnaest.utils.element.bi.UnaryBiElement;
 import org.omnaest.utils.table.Table;
@@ -44,11 +46,496 @@ import org.omnaest.utils.table.domain.Column;
 import org.omnaest.utils.table.domain.Row;
 import org.omnaest.utils.table.domain.ValueAccessor;
 
+import lombok.RequiredArgsConstructor;
+
 public class ArrayTable implements Table
 {
     private KeyIndex  columnIndex = new KeyIndex();
     private KeyIndex  rowIndex    = new KeyIndex();
     private TableData data        = new TableData();
+
+    @Override
+    public Table addColumnTitle(String title)
+    {
+        this.columnIndex.addKey(title);
+        return this;
+    }
+
+    public Optional<String> getColumnTitle(int index)
+    {
+        return this.columnIndex.getEffectiveKey(index);
+    }
+
+    @Override
+    public Table addColumnTitles(String... titles)
+    {
+        return this.addColumnTitles(Arrays.asList(titles));
+    }
+
+    @Override
+    public Table addColumnTitles(List<String> titles)
+    {
+        if (titles != null)
+        {
+            titles.forEach(this::addColumnTitle);
+        }
+        return this;
+    }
+
+    @Override
+    public Table addRowTitles(List<String> titles)
+    {
+        if (titles != null)
+        {
+            titles.forEach(this::addRowTitle);
+        }
+        return this;
+    }
+
+    @Override
+    public Table addRowTitles(String... titles)
+    {
+        return this.addRowTitles(Arrays.asList(titles));
+    }
+
+    @Override
+    public Table addRowTitle(String title)
+    {
+        this.rowIndex.addKey(title);
+        return this;
+    }
+
+    public String getRowTitle(int index)
+    {
+        return this.rowIndex.getKey(index);
+    }
+
+    @Override
+    public Table addRow(String... values)
+    {
+        this.newRow()
+            .setValues(values);
+        return this;
+    }
+
+    @Override
+    public Table addRow(Iterable<String> values)
+    {
+        this.newRow()
+            .setValues(Optional.ofNullable(values)
+                               .orElse(Collections.emptyList()));
+        return this;
+    }
+
+    @Override
+    public Table addRow(BiElement<String, String> tuple)
+    {
+        return this.addRow(Optional.ofNullable(tuple)
+                                   .map(BiElement<String, String>::asUnary)
+                                   .map(UnaryBiElement<String>::asList)
+                                   .orElse(Collections.emptyList()));
+    }
+
+    @Override
+    public Table addRow(Map<String, String> row)
+    {
+        if (row != null)
+        {
+            this.newRow()
+                .setValuesByColumnTitles(row);
+        }
+        return this;
+    }
+
+    @Override
+    public Table addRow(Consumer<RowBuilder> rowConsumer)
+    {
+        Row row = this.newRow();
+        if (rowConsumer != null)
+        {
+            rowConsumer.accept(new RowBuilder() {
+                @Override
+                public RowBuilder addValueByColumnTitle(String columnTitle, String value)
+                {
+                    row.getCellOrNew(columnTitle)
+                       .setValue(value);
+                    return this;
+                }
+            });
+        }
+        return this;
+    }
+
+    @Override
+    public <E> Table processAndAddRow(Stream<E> elements, BiConsumer<E, Row> elementAndRowConsumer)
+    {
+        Optional.ofNullable(elements)
+                .orElse(Stream.empty())
+                .forEach(element -> elementAndRowConsumer.accept(element, this.newRow()));
+        return this;
+    }
+
+    @Override
+    public Row newRow()
+    {
+        int rowIndex = this.getRowSize();
+        Row result = new RowImpl(rowIndex);
+        this.data.setRowSize(rowIndex + 1);
+        return result;
+    }
+
+    @Override
+    public int getRowSize()
+    {
+        return this.data.getRowSize();
+    }
+
+    @Override
+    public List<Row> getRows()
+    {
+        return Collections.unmodifiableList(this.stream()
+                                                .collect(Collectors.toList()));
+    }
+
+    @Override
+    public Stream<Row> stream()
+    {
+        return IntStream.range(0, this.getRowSize())
+                        .mapToObj(rowIndex -> this.getRow(rowIndex));
+    }
+
+    @Override
+    public Row getRow(int rowIndex)
+    {
+        return new RowImpl(rowIndex);
+    }
+
+    public Column getColumn(int index)
+    {
+        ArrayTable table = ArrayTable.this;
+        return new ColumnImpl(index, table);
+    }
+
+    @Override
+    public TableSerializer serialize()
+    {
+        return new TableSerializerImpl(this);
+    }
+
+    @Override
+    public List<String> getColumnTitles()
+    {
+        return this.columnIndex.getKeys();
+    }
+
+    @Override
+    public List<String> getEffectiveColumnTitles()
+    {
+        return this.getEffectiveColumns()
+                   .stream()
+                   .map(Column::getTitle)
+                   .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Column> getColumns()
+    {
+        return IntStream.range(0, this.columnIndex.size())
+                        .mapToObj(this::getColumn)
+                        .collect(Collectors.toList());
+    }
+
+    @Override
+    public Optional<Column> getColumn(String columnTitle)
+    {
+        return this.getColumns()
+                   .stream()
+                   .filter(column -> StringUtils.equals(columnTitle, column.getTitle()))
+                   .findFirst();
+    }
+
+    @Override
+    public List<Column> getEffectiveColumns()
+    {
+        return IntStream.range(0, this.columnIndex.getEffectiveSize())
+                        .mapToObj(this::getColumn)
+                        .collect(Collectors.toList());
+    }
+
+    @Override
+    public String getValue(int rowIndex, int columnIndex)
+    {
+        return this.data.get(rowIndex, columnIndex);
+    }
+
+    @Override
+    public String getValue(String rowTitle, String columnTitle)
+    {
+        return this.getValue(this.rowIndex.getIndex(rowTitle), this.columnIndex.getIndex(columnTitle));
+    }
+
+    @Override
+    public Iterator<Row> iterator()
+    {
+        return this.getRows()
+                   .iterator();
+    }
+
+    @Override
+    public String toString()
+    {
+        return this.serialize()
+                   .asCsv()
+                   .get();
+    }
+
+    @Override
+    public TableTranslator as()
+    {
+        return new TableTranslatorImpl(this);
+    }
+
+    @Override
+    public TableDataLoader load()
+    {
+        return new TableDataLoader() {
+            @Override
+            public Table fromRows(Stream<Map<String, String>> rows)
+            {
+                if (rows != null)
+                {
+                    rows.forEach(ArrayTable.this::addRow);
+                }
+                return ArrayTable.this;
+            }
+
+            @Override
+            public Table fromRows(Iterable<Map<String, String>> rows)
+            {
+                if (rows != null)
+                {
+                    rows.forEach(ArrayTable.this::addRow);
+                }
+                return ArrayTable.this;
+            }
+        };
+    }
+
+    @Override
+    public TableDeserializer deserialize()
+    {
+        return new TableDeserializerImpl(this);
+    }
+
+    @Override
+    public int hashCode()
+    {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((this.columnIndex == null) ? 0 : this.columnIndex.hashCode());
+        result = prime * result + ((this.data == null) ? 0 : this.data.hashCode());
+        result = prime * result + ((this.rowIndex == null) ? 0 : this.rowIndex.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (this == obj)
+        {
+            return true;
+        }
+        if (obj == null)
+        {
+            return false;
+        }
+        if (this.getClass() != obj.getClass())
+        {
+            return false;
+        }
+        ArrayTable other = (ArrayTable) obj;
+        if (this.columnIndex == null)
+        {
+            if (other.columnIndex != null)
+            {
+                return false;
+            }
+        }
+        else if (!this.columnIndex.equals(other.columnIndex))
+        {
+            return false;
+        }
+        if (this.data == null)
+        {
+            if (other.data != null)
+            {
+                return false;
+            }
+        }
+        else if (!this.data.equals(other.data))
+        {
+            return false;
+        }
+        if (this.rowIndex == null)
+        {
+            if (other.rowIndex != null)
+            {
+                return false;
+            }
+        }
+        else if (!this.rowIndex.equals(other.rowIndex))
+        {
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public TableJoiner join()
+    {
+        Table tableLeft = this;
+        return new TableJoiner() {
+            @Override
+            public <PK> TableJoinerWithLeftColumn<PK> usingColumnFunction(Function<Row, PK> leftColumnFunction)
+            {
+                return new TableJoinerWithLeftColumn<PK>() {
+                    @Override
+                    public TableJoinerWithRightTable<PK> with(Table tableRight)
+                    {
+                        return new TableJoinerWithRightTable<PK>() {
+
+                            @Override
+                            public <UR> TableJoinerWithRightColumn<PK> usingColumnFunction(Function<Row, PK> rightColumnFunction)
+                            {
+                                return new TableJoinerWithRightColumn<PK>() {
+                                    @Override
+                                    public Table inner()
+                                    {
+                                        Table result = Table.newInstance();
+                                        if (tableRight != null)
+                                        {
+                                            Map<PK, Row> primaryKeyToRow = tableLeft.as()
+                                                                                    .map(leftColumnFunction, Function.identity());
+                                            List<String> columnTitles = Stream.concat(tableLeft.getColumnTitles()
+                                                                                               .stream(),
+                                                                                      tableRight.getColumnTitles()
+                                                                                                .stream())
+                                                                              .distinct()
+                                                                              .collect(Collectors.toList());
+                                            result.addColumnTitles(columnTitles);
+                                            tableRight.stream()
+                                                      .forEach(rightRow ->
+                                                      {
+                                                          PK primaryKey = rightColumnFunction.apply(rightRow);
+                                                          Row leftRow = primaryKeyToRow.get(primaryKey);
+                                                          if (leftRow != null)
+                                                          {
+                                                              result.addRow(columnTitles.stream()
+                                                                                        .map(columnTitle -> leftRow.getOptionalValue(columnTitle)
+                                                                                                                   .orElseGet(() -> rightRow.getOptionalValue(columnTitle)
+                                                                                                                                            .orElse(null)))
+                                                                                        .collect(Collectors.toList()));
+                                                          }
+                                                      });
+                                        }
+                                        return result;
+                                    }
+                                };
+                            }
+
+                            @SuppressWarnings("unchecked")
+                            @Override
+                            public TableJoinerWithRightColumn<String> usingColumn(String columnTitle)
+                            {
+                                return (TableJoinerWithRightColumn<String>) this.usingColumnFunction(row -> (PK) row.getValue(columnTitle));
+                            }
+
+                            @SuppressWarnings("unchecked")
+                            @Override
+                            public TableJoinerWithRightColumn<Integer> usingRowIndex()
+                            {
+                                return (TableJoinerWithRightColumn<Integer>) this.usingColumnFunction(row -> (PK) Integer.valueOf(row.getRowIndex()));
+                            }
+                        };
+                    }
+                };
+            }
+
+            @Override
+            public TableJoinerWithLeftColumn<String> usingColumn(String columnTitle)
+            {
+                return this.usingColumnFunction(row -> row.getValue(columnTitle));
+            }
+
+            @Override
+            public TableJoinerWithLeftColumn<Integer> usingRowIndex()
+            {
+                return this.usingColumnFunction(Row::getRowIndex);
+            }
+        };
+    }
+
+    @RequiredArgsConstructor
+    private static class ColumnImpl implements Column
+    {
+        private final int        index;
+        private final ArrayTable table;
+
+        @Override
+        public String getTitle()
+        {
+            return this.table.getColumnTitle(this.index)
+                             .orElse(null);
+        }
+
+        @Override
+        public List<Cell> getCells()
+        {
+            List<Cell> result = new ArrayList<>();
+
+            for (Row row : this.table.getRows())
+            {
+                result.add(row.getCell(this.index));
+            }
+
+            return result;
+        }
+
+        @Override
+        public List<String> getValues()
+        {
+            return this.getCells()
+                       .stream()
+                       .map(Cell::getValue)
+                       .collect(Collectors.toList());
+        }
+
+        @Override
+        public boolean containsValue(String value)
+        {
+            return this.getValues()
+                       .contains(value);
+        }
+
+        @Override
+        public String toString()
+        {
+            StringBuilder builder = new StringBuilder();
+            builder.append("Column [getTitle()=")
+                   .append(this.getTitle())
+                   .append(", getValues()=")
+                   .append(this.getValues())
+                   .append("]");
+            return builder.toString();
+        }
+
+        @Override
+        public int getColumnIndex()
+        {
+            return this.index;
+        }
+
+    }
 
     public class RowImpl implements Row
     {
@@ -128,8 +615,7 @@ public class ArrayTable implements Table
         @Override
         public Cell getCell(int columnIndex)
         {
-            return new Cell()
-            {
+            return new Cell() {
                 @Override
                 public String getValue()
                 {
@@ -146,8 +632,7 @@ public class ArrayTable implements Table
                 public Optional<ValueAccessor> getOptionalValueAs()
                 {
                     return this.getOptionalValue()
-                               .map(value -> new ValueAccessor()
-                               {
+                               .map(value -> new ValueAccessor() {
                                    @Override
                                    public int intValue()
                                    {
@@ -353,6 +838,36 @@ public class ArrayTable implements Table
         }
 
         @Override
+        public Row setValuesByColumnTitles(Map<String, String> columnTitleToValue)
+        {
+            if (columnTitleToValue != null)
+            {
+                List<String> values = new ArrayList<>();
+                columnTitleToValue.forEach((key, value) ->
+                {
+                    if (!ArrayTable.this.columnIndex.hasKey(key))
+                    {
+                        ArrayTable.this.columnIndex.addKey(key);
+                    }
+
+                    int index = ArrayTable.this.columnIndex.getIndex(key);
+
+                    ListUtils.setTo(values, index, value);
+                });
+                this.setValues(values.toArray(String[]::new));
+            }
+            return this;
+        }
+
+        @Override
+        public Row setValuesByColumnTitles(Row row)
+        {
+            return this.setValuesByColumnTitles(Optional.ofNullable(row)
+                                                        .map(Row::asMap)
+                                                        .orElse(Collections.emptyMap()));
+        }
+
+        @Override
         public Cell getFirstCell()
         {
             return this.getCell(0);
@@ -399,464 +914,21 @@ public class ArrayTable implements Table
         @Override
         public <T> T asBean(Class<T> type)
         {
-            return JSONHelper.toObjectWithType(this.asMap(), type);
+            return JsonUtils.toObjectWithType(this.asMap(), type);
         }
 
-    }
-
-    @Override
-    public Table addColumnTitle(String title)
-    {
-        this.columnIndex.addKey(title);
-        return this;
-    }
-
-    public Optional<String> getColumnTitle(int index)
-    {
-        return this.columnIndex.getEffectiveKey(index);
-    }
-
-    @Override
-    public Table addColumnTitles(String... titles)
-    {
-        return this.addColumnTitles(Arrays.asList(titles));
-    }
-
-    @Override
-    public Table addColumnTitles(List<String> titles)
-    {
-        if (titles != null)
+        @Override
+        public boolean hasNonEmptyFirstValue()
         {
-            titles.forEach(this::addColumnTitle);
+            return StringUtils.isNotEmpty(this.getFirstValue());
         }
-        return this;
-    }
 
-    @Override
-    public Table addRowTitles(List<String> titles)
-    {
-        if (titles != null)
+        @Override
+        public boolean hasNonEmptySecondValue()
         {
-            titles.forEach(this::addRowTitle);
+            return StringUtils.isNotEmpty(this.getSecondValue());
         }
-        return this;
-    }
 
-    @Override
-    public Table addRowTitles(String... titles)
-    {
-        return this.addRowTitles(Arrays.asList(titles));
-    }
-
-    @Override
-    public Table addRowTitle(String title)
-    {
-        this.rowIndex.addKey(title);
-        return this;
-    }
-
-    public String getRowTitle(int index)
-    {
-        return this.rowIndex.getKey(index);
-    }
-
-    @Override
-    public Table addRow(String... values)
-    {
-        this.newRow()
-            .setValues(values);
-        return this;
-    }
-
-    @Override
-    public Table addRow(Iterable<String> values)
-    {
-        this.newRow()
-            .setValues(Optional.ofNullable(values)
-                               .orElse(Collections.emptyList()));
-        return this;
-    }
-
-    @Override
-    public Table addRow(BiElement<String, String> tuple)
-    {
-        return this.addRow(Optional.ofNullable(tuple)
-                                   .map(BiElement<String, String>::asUnary)
-                                   .map(UnaryBiElement<String>::asList)
-                                   .orElse(Collections.emptyList()));
-    }
-
-    @Override
-    public Table addRow(Map<String, String> row)
-    {
-        if (row != null)
-        {
-            String[] values = new String[row.size()];
-            row.forEach((key, value) ->
-            {
-                if (!this.columnIndex.hasKey(key))
-                {
-                    this.columnIndex.addKey(key);
-                }
-
-                int index = this.columnIndex.getIndex(key);
-                values[index] = value;
-            });
-            this.newRow()
-                .setValues(values);
-        }
-        return this;
-    }
-
-    @Override
-    public <E> Table processAndAddRow(Stream<E> elements, BiConsumer<E, Row> elementAndRowConsumer)
-    {
-        Optional.ofNullable(elements)
-                .orElse(Stream.empty())
-                .forEach(element -> elementAndRowConsumer.accept(element, this.newRow()));
-        return this;
-    }
-
-    @Override
-    public Row newRow()
-    {
-        int rowIndex = this.getRowSize();
-        Row result = new RowImpl(rowIndex);
-        this.data.setRowSize(rowIndex + 1);
-        return result;
-    }
-
-    @Override
-    public int getRowSize()
-    {
-        return this.data.getRowSize();
-    }
-
-    @Override
-    public List<Row> getRows()
-    {
-        return Collections.unmodifiableList(this.stream()
-                                                .collect(Collectors.toList()));
-    }
-
-    @Override
-    public Stream<Row> stream()
-    {
-        return IntStream.range(0, this.getRowSize())
-                        .mapToObj(rowIndex -> this.getRow(rowIndex));
-    }
-
-    @Override
-    public Row getRow(int rowIndex)
-    {
-        return new RowImpl(rowIndex);
-    }
-
-    public Column getColumn(int index)
-    {
-        return new Column()
-        {
-            @Override
-            public String getTitle()
-            {
-                return ArrayTable.this.getColumnTitle(index)
-                                      .orElse(null);
-            }
-
-            @Override
-            public List<Cell> getCells()
-            {
-                List<Cell> result = new ArrayList<>();
-
-                for (Row row : ArrayTable.this.getRows())
-                {
-                    result.add(row.getCell(index));
-                }
-
-                return result;
-            }
-
-            @Override
-            public List<String> getValues()
-            {
-                return this.getCells()
-                           .stream()
-                           .map(Cell::getValue)
-                           .collect(Collectors.toList());
-            }
-
-            @Override
-            public boolean containsValue(String value)
-            {
-                return this.getValues()
-                           .contains(value);
-            }
-
-        };
-    }
-
-    @Override
-    public TableSerializer serialize()
-    {
-        return new TableSerializerImpl(this);
-    }
-
-    @Override
-    public List<String> getColumnTitles()
-    {
-        return this.columnIndex.getKeys();
-    }
-
-    @Override
-    public List<String> getEffectiveColumnTitles()
-    {
-        return this.getEffectiveColumns()
-                   .stream()
-                   .map(Column::getTitle)
-                   .collect(Collectors.toList());
-    }
-
-    @Override
-    public List<Column> getColumns()
-    {
-        return IntStream.range(0, this.columnIndex.size())
-                        .mapToObj(this::getColumn)
-                        .collect(Collectors.toList());
-    }
-
-    @Override
-    public Optional<Column> getColumn(String columnTitle)
-    {
-        return this.getColumns()
-                   .stream()
-                   .filter(column -> StringUtils.equals(columnTitle, column.getTitle()))
-                   .findFirst();
-    }
-
-    @Override
-    public List<Column> getEffectiveColumns()
-    {
-        return IntStream.range(0, this.columnIndex.getEffectiveSize())
-                        .mapToObj(this::getColumn)
-                        .collect(Collectors.toList());
-    }
-
-    @Override
-    public String getValue(int rowIndex, int columnIndex)
-    {
-        return this.data.get(rowIndex, columnIndex);
-    }
-
-    @Override
-    public String getValue(String rowTitle, String columnTitle)
-    {
-        return this.getValue(this.rowIndex.getIndex(rowTitle), this.columnIndex.getIndex(columnTitle));
-    }
-
-    @Override
-    public Iterator<Row> iterator()
-    {
-        return this.getRows()
-                   .iterator();
-    }
-
-    @Override
-    public String toString()
-    {
-        return this.serialize()
-                   .asCsv()
-                   .get();
-    }
-
-    @Override
-    public TableTranslator as()
-    {
-        return new TableTranslatorImpl(this);
-    }
-
-    @Override
-    public TableDataLoader load()
-    {
-        return new TableDataLoader()
-        {
-            @Override
-            public Table fromRows(Stream<Map<String, String>> rows)
-            {
-                if (rows != null)
-                {
-                    rows.forEach(ArrayTable.this::addRow);
-                }
-                return ArrayTable.this;
-            }
-
-            @Override
-            public Table fromRows(Iterable<Map<String, String>> rows)
-            {
-                if (rows != null)
-                {
-                    rows.forEach(ArrayTable.this::addRow);
-                }
-                return ArrayTable.this;
-            }
-        };
-    }
-
-    @Override
-    public TableDeserializer deserialize()
-    {
-        return new TableDeserializerImpl(this);
-    }
-
-    @Override
-    public int hashCode()
-    {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + ((this.columnIndex == null) ? 0 : this.columnIndex.hashCode());
-        result = prime * result + ((this.data == null) ? 0 : this.data.hashCode());
-        result = prime * result + ((this.rowIndex == null) ? 0 : this.rowIndex.hashCode());
-        return result;
-    }
-
-    @Override
-    public boolean equals(Object obj)
-    {
-        if (this == obj)
-        {
-            return true;
-        }
-        if (obj == null)
-        {
-            return false;
-        }
-        if (this.getClass() != obj.getClass())
-        {
-            return false;
-        }
-        ArrayTable other = (ArrayTable) obj;
-        if (this.columnIndex == null)
-        {
-            if (other.columnIndex != null)
-            {
-                return false;
-            }
-        }
-        else if (!this.columnIndex.equals(other.columnIndex))
-        {
-            return false;
-        }
-        if (this.data == null)
-        {
-            if (other.data != null)
-            {
-                return false;
-            }
-        }
-        else if (!this.data.equals(other.data))
-        {
-            return false;
-        }
-        if (this.rowIndex == null)
-        {
-            if (other.rowIndex != null)
-            {
-                return false;
-            }
-        }
-        else if (!this.rowIndex.equals(other.rowIndex))
-        {
-            return false;
-        }
-        return true;
-    }
-
-    @Override
-    public TableJoiner join()
-    {
-        Table tableLeft = this;
-        return new TableJoiner()
-        {
-            @Override
-            public <PK> TableJoinerWithLeftColumn<PK> usingColumnFunction(Function<Row, PK> leftColumnFunction)
-            {
-                return new TableJoinerWithLeftColumn<PK>()
-                {
-                    @Override
-                    public TableJoinerWithRightTable<PK> with(Table tableRight)
-                    {
-                        return new TableJoinerWithRightTable<PK>()
-                        {
-
-                            @Override
-                            public <UR> TableJoinerWithRightColumn<PK> usingColumnFunction(Function<Row, PK> rightColumnFunction)
-                            {
-                                return new TableJoinerWithRightColumn<PK>()
-                                {
-                                    @Override
-                                    public Table inner()
-                                    {
-                                        Table result = Table.newInstance();
-                                        if (tableRight != null)
-                                        {
-                                            Map<PK, Row> primaryKeyToRow = tableLeft.as()
-                                                                                    .map(leftColumnFunction, Function.identity());
-                                            List<String> columnTitles = Stream.concat(tableLeft.getColumnTitles()
-                                                                                               .stream(),
-                                                                                      tableRight.getColumnTitles()
-                                                                                                .stream())
-                                                                              .distinct()
-                                                                              .collect(Collectors.toList());
-                                            result.addColumnTitles(columnTitles);
-                                            tableRight.stream()
-                                                      .forEach(rightRow ->
-                                                      {
-                                                          PK primaryKey = rightColumnFunction.apply(rightRow);
-                                                          Row leftRow = primaryKeyToRow.get(primaryKey);
-                                                          if (leftRow != null)
-                                                          {
-                                                              result.addRow(columnTitles.stream()
-                                                                                        .map(columnTitle -> leftRow.getOptionalValue(columnTitle)
-                                                                                                                   .orElseGet(() -> rightRow.getOptionalValue(columnTitle)
-                                                                                                                                            .orElse(null)))
-                                                                                        .collect(Collectors.toList()));
-                                                          }
-                                                      });
-                                        }
-                                        return result;
-                                    }
-                                };
-                            }
-
-                            @SuppressWarnings("unchecked")
-                            @Override
-                            public TableJoinerWithRightColumn<String> usingColumn(String columnTitle)
-                            {
-                                return (TableJoinerWithRightColumn<String>) this.usingColumnFunction(row -> (PK) row.getValue(columnTitle));
-                            }
-
-                            @SuppressWarnings("unchecked")
-                            @Override
-                            public TableJoinerWithRightColumn<Integer> usingRowIndex()
-                            {
-                                return (TableJoinerWithRightColumn<Integer>) this.usingColumnFunction(row -> (PK) Integer.valueOf(row.getRowIndex()));
-                            }
-                        };
-                    }
-                };
-            }
-
-            @Override
-            public TableJoinerWithLeftColumn<String> usingColumn(String columnTitle)
-            {
-                return this.usingColumnFunction(row -> row.getValue(columnTitle));
-            }
-
-            @Override
-            public TableJoinerWithLeftColumn<Integer> usingRowIndex()
-            {
-                return this.usingColumnFunction(Row::getRowIndex);
-            }
-        };
     }
 
 }

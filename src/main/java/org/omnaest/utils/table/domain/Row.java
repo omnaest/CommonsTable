@@ -48,6 +48,10 @@ public interface Row extends Iterable<String>
 
     public Row setValues(String... values);
 
+    public Row setValuesByColumnTitles(Map<String, String> columnTitleToValue);
+
+    public Row setValuesByColumnTitles(Row row);
+
     public Row addValues(Iterable<String> values);
 
     public Row setValues(Iterable<String> values);
@@ -86,5 +90,9 @@ public interface Row extends Iterable<String>
     public int size();
 
     public int getRowIndex();
+
+    public boolean hasNonEmptySecondValue();
+
+    public boolean hasNonEmptyFirstValue();
 
 }

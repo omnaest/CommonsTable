@@ -26,4 +26,6 @@ public interface Column
     public List<String> getValues();
 
     public boolean containsValue(String value);
+
+    public int getColumnIndex();
 }

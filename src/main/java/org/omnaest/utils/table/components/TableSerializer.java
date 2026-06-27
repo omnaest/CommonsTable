@@ -16,14 +16,35 @@
 package org.omnaest.utils.table.components;
 
 import java.io.File;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
+
+import org.omnaest.utils.table.Table;
 
 public interface TableSerializer
 {
-    public CsvWriter asCsv();
+    public SerializationResultWriter asCsv();
 
-    public static interface CsvWriter extends Supplier<String>
+    public SerializationResultWriter asCsv(Consumer<CsvWriterOptions> options);
+
+    public static interface CsvWriterOptions
     {
-        public CsvWriter writeInto(File file);
+        public CsvWriterOptions withDelimiter(char delimiter);
     }
+
+    public SerializationResultWriter asTabSeparated();
+
+    /**
+     * Returns a {@link SerializationResultWriter} that represents the {@link Table} with all column values using the space of the column value with the maximal
+     * length.
+     * 
+     * @return
+     */
+    public SerializationResultWriter asFixColumnSizeFormatted();
+
+    public static interface SerializationResultWriter extends Supplier<String>
+    {
+        public SerializationResultWriter writeInto(File file);
+    }
+
 }

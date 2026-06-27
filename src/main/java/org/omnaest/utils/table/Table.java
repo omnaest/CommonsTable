@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -51,6 +52,13 @@ public interface Table extends ImmutableTable
      * @return
      */
     public Table addRow(Map<String, String> row);
+
+    public Table addRow(Consumer<RowBuilder> row);
+
+    public static interface RowBuilder
+    {
+        public RowBuilder addValueByColumnTitle(String columnTitle, String value);
+    }
 
     /**
      * Processes a given {@link Stream} of elements and creates a new {@link Row} which can be initialized based on a single element each.

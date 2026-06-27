@@ -17,8 +17,11 @@ package org.omnaest.utils.table.components;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
+import java.util.stream.Stream;
 
 import org.omnaest.utils.table.Table;
 import org.omnaest.utils.table.domain.Row;
@@ -39,9 +42,17 @@ public interface TableTranslator
 
     public <K, V> Map<K, List<V>> group(Function<Row, K> keyMapper, Function<Row, V> valueMapper);
 
+    public Map<String, List<String>> groupedMap();
+
+    public <R> Map<String, R> groupedAndProjectedMap(Function<List<String>, R> projector);
+
+    public <K, V> Map<K, V> groupedAndProjectedMap(Function<String, K> keyMapper, Function<List<String>, V> projector);
+
+    public <K> Table groupedAndAggregatedAndProjectedRows(Function<Row, K> groupingKeyFunction, BiFunction<K, List<Row>, Row> aggregateProjectionFunction);
+
     public Table tableWithUniqueRows();
 
-    public Table filteredTable(Predicate<Row> rowInclusionFilter);
+    public Table filteredRows(Predicate<Row> rowInclusionFilter);
 
     public <C extends Comparable<C>> Table sortedBy(Function<Row, C> rowSortingFunction, SortOrder sortOrder);
 
@@ -49,4 +60,32 @@ public interface TableTranslator
     {
         ASCENDING, DESCENDING
     }
+
+    /**
+     * Returns a new {@link Table} instance which has the columns and rows flipped.
+     * 
+     * @return
+     */
+    public Table flipped();
+
+    /**
+     * Allows to map the column title and cell content
+     * 
+     * @param content
+     * @return
+     */
+    public Table cellContentMappedTable(UnaryOperator<String> content);
+
+    public Stream<Table> partitionedByMaxColumns(int maximumNumberOfColumns);
+
+    public Table columnSubset(String... columnTitles);
+
+    public Table columnSubset(int... columnIndex);
+
+    public Table columnSubset(int startInclusive);
+
+    public Table columnSubset(int startInclusive, int endExclusive);
+
+    public Table columnSubsetClosed(int startInclusive, int endInclusive);
+
 }

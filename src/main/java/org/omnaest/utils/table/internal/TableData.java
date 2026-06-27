@@ -61,12 +61,12 @@ public class TableData
 
     private void extendRawArrayIfNecessary(int rowIndex, int columnIndex)
     {
-        if (rowIndex >= this.getRawRowSize(this.data))
+        while (rowIndex >= this.getRawRowSize(this.data))
         {
             this.extendRows();
         }
 
-        if (columnIndex >= this.getRawColumnSize(this.data))
+        while (columnIndex >= this.getRawColumnSize(this.data))
         {
             this.extendColumns();
         }

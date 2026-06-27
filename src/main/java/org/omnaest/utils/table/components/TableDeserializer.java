@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.omnaest.utils.csv.CSVUtils.Parser;
@@ -38,19 +39,19 @@ public interface TableDeserializer
 
     public CsvReader asCsv();
 
-    public static interface CsvReader
+    public CsvReader asCsv(Consumer<CsvReaderOptions> options);
+
+    public static interface CsvReaderOptions
     {
-        /**
-         * Reads the {@link Table} from a {@link File}.
-         * 
-         * @throws RuntimeIOException
-         * @param file
-         * @return
-         */
-        public Table from(File file);
+        public CsvReaderOptions withDelimiter(char delimiter);
+    }
 
-        public Table from(InputStream inputStream);
+    public CsvReader asTabSeparated();
 
+    public static interface CsvReader extends Reader
+    {
+
+        @Override
         public Table from(String csv);
 
         public Table from(Function<Parser, ParserLoadedAndFormatDeclared> parserFunction) throws IOException;
@@ -63,5 +64,23 @@ public interface TableDeserializer
          * @return
          */
         public Optional<Table> fromIfExists(File file);
+    }
+
+    public Reader asFixColumnSizeFormatted();
+
+    public static interface Reader
+    {
+        /**
+         * Reads the {@link Table} from a {@link File}.
+         * 
+         * @throws RuntimeIOException
+         * @param file
+         * @return
+         */
+        public Table from(File file);
+
+        public Table from(InputStream inputStream);
+
+        public Table from(String content);
     }
 }

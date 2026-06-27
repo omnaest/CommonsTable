@@ -23,6 +23,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.junit.Test;
+import org.omnaest.utils.ListUtils;
+import org.omnaest.utils.MapUtils;
+import org.omnaest.utils.StringUtils;
 import org.omnaest.utils.table.Table;
 import org.omnaest.utils.table.components.TableTranslator.SortOrder;
 import org.omnaest.utils.table.domain.Cell;
@@ -72,6 +75,54 @@ public class ArrayTableTest
                                                               .asList());
         assertEquals(Arrays.asList("4.0", "5.0", "6.0"), table.getRow(1)
                                                               .asList());
+
+    }
+
+    @Test
+    public void testAddRowWithBuilder() throws Exception
+    {
+        Table table = Table.newInstance();
+        table.addRow(row -> row.addValueByColumnTitle("column1", "value1")
+                               .addValueByColumnTitle("column2", "value2"))
+             .addRow(row -> row.addValueByColumnTitle("column1", "value1")
+                               .addValueByColumnTitle("column3", "value3"))
+             .addRow(row -> row.addValueByColumnTitle("column2", "value2")
+                               .addValueByColumnTitle("column3", "value3"));
+
+        assertEquals(List.of("column1", "column2", "column3"), table.getColumnTitles());
+        assertEquals(Arrays.asList("value1", "value2", null), table.getRow(0)
+                                                                   .asList());
+        assertEquals(Arrays.asList("value1", null, "value3"), table.getRow(1)
+                                                                   .asList());
+        assertEquals(Arrays.asList(null, "value2", "value3"), table.getRow(2)
+                                                                   .asList());
+
+    }
+
+    @Test
+    public void testAddRowWithMap() throws Exception
+    {
+        Table table = Table.newInstance();
+        table.addRow(MapUtils.builder()
+                             .put("column1", "value1")
+                             .put("column2", "value2")
+                             .build())
+             .addRow(MapUtils.builder()
+                             .put("column1", "value1")
+                             .put("column3", "value3")
+                             .build())
+             .addRow(MapUtils.builder()
+                             .put("column2", "value2")
+                             .put("column3", "value3")
+                             .build());
+
+        assertEquals(List.of("column1", "column2", "column3"), table.getColumnTitles());
+        assertEquals(Arrays.asList("value1", "value2", null), table.getRow(0)
+                                                                   .asList());
+        assertEquals(Arrays.asList("value1", null, "value3"), table.getRow(1)
+                                                                   .asList());
+        assertEquals(Arrays.asList(null, "value2", "value3"), table.getRow(2)
+                                                                   .asList());
 
     }
 
@@ -277,14 +328,14 @@ public class ArrayTableTest
                           .addRow("a", "b")
                           .addRow("a", "c")
                           .as()
-                          .filteredTable(row -> row.getFirstValue()
-                                                   .equals("a")));
+                          .filteredRows(row -> row.getFirstValue()
+                                                  .equals("a")));
         assertEquals(Table.newInstance()
                           .addColumnTitles("c1", "c2"),
                      Table.newInstance()
                           .addColumnTitles("c1", "c2")
                           .as()
-                          .filteredTable(row -> true));
+                          .filteredRows(row -> true));
     }
 
     @Test
@@ -364,6 +415,136 @@ public class ArrayTableTest
                                  .getOptionalValueAs("booleanColumn")
                                  .map(ValueAccessor::booleanValue)
                                  .isPresent());
+    }
+
+    @Test
+    public void testFlipped()
+    {
+        Table table = Table.newInstance()
+                           .addColumnTitles("name", "email", "address", "age")
+                           .addRow("Gunther", "gunther@gu.com", "Guntherstreet 1", null)
+                           .addRow("Paul", null, "Paulstreet 2", "40")
+                           .as()
+                           .flipped();
+        assertEquals(Table.newInstance()
+                          .addColumnTitles("name", "Gunther", "Paul")
+                          .addRow("email", "gunther@gu.com")
+                          .addRow("address", "Guntherstreet 1", "Paulstreet 2")
+                          .addRow("age", null, "40"),
+                     table);
+
+    }
+
+    @Test
+    public void testAsCellContentMappedTable()
+    {
+        Table table = Table.newInstance()
+                           .addColumnTitles("name", "email", "address")
+                           .addRow("Gunther", "gunther@gu.com", "Guntherstreet")
+                           .addRow("Paul", "paul@paul.com", "Paulstreet")
+                           .as()
+                           .cellContentMappedTable(content -> content.replaceAll("[^a-zA-Z]+", ""));
+        assertEquals(Table.newInstance()
+                          .addColumnTitles("name", "email", "address")
+                          .addRow("Gunther", "gunthergucom", "Guntherstreet")
+                          .addRow("Paul", "paulpaulcom", "Paulstreet"),
+                     table);
+
+    }
+
+    @Test
+    public void testTabSeparatedSerializationAndDeserialization()
+    {
+        Table table = Table.newInstance()
+                           .addColumnTitles("name", "email", "address")
+                           .addRow("Gunther", "gunther@gu.com", "Guntherstreet")
+                           .addRow("Paul", "paul@paul.com", "Paulstreet")
+                           .addRow("", "maria@maria.com", "Mariastreet");
+        String serializedTable = table.serialize()
+                                      .asTabSeparated()
+                                      .get();
+        assertEquals(StringUtils.builder()
+                                .addLine("name\temail\taddress")
+                                .addLine("Gunther\tgunther@gu.com\tGuntherstreet")
+                                .addLine("Paul\tpaul@paul.com\tPaulstreet")
+                                .addLine("\"\"\tmaria@maria.com\tMariastreet")
+                                .build(),
+                     serializedTable);
+        assertEquals(table, Table.newInstance()
+                                 .deserialize()
+                                 .asTabSeparated()
+                                 .from(serializedTable));
+    }
+
+    @Test
+    public void testAsPartitionedByMaxColumns()
+    {
+        List<Table> tables = Table.newInstance()
+                                  .addColumnTitles("name", "email", "address", "age")
+                                  .addRow("Gunther", "gunther@gu.com", "Guntherstreet 1", null)
+                                  .addRow("Paul", null, "Paulstreet 2", "40")
+                                  .as()
+                                  .partitionedByMaxColumns(3)
+                                  .toList();
+        assertEquals(List.of(Table.newInstance()
+                                  .addColumnTitles("name", "email", "address")
+                                  .addRow("Gunther", "gunther@gu.com", "Guntherstreet 1")
+                                  .addRow("Paul", null, "Paulstreet 2"),
+                             Table.newInstance()
+                                  .addColumnTitles("age")
+                                  .addRow((String) null)
+                                  .addRow("40")),
+                     tables);
+    }
+
+    @Test
+    public void testAsColumnSubsetOfColumnTitles()
+    {
+        Table table = Table.newInstance()
+                           .addColumnTitles("name", "email", "address", "age")
+                           .addRow("Gunther", "gunther@gu.com", "Guntherstreet 1", null)
+                           .addRow("Paul", null, "Paulstreet 2", "40")
+                           .as()
+                           .columnSubset("name", "email");
+        assertEquals(Table.newInstance()
+                          .addColumnTitles("name", "email")
+                          .addRow("Gunther", "gunther@gu.com")
+                          .addRow("Paul", null),
+                     table);
+
+    }
+
+    @Test
+    public void testAsGroupedAndProjectedMap()
+    {
+        assertEquals(MapUtils.builder()
+                             .put("Gunther", "gunther@gu.com")
+                             .put("Paul", "paul@abc.com")
+                             .build(),
+                     Table.newInstance()
+                          .addColumnTitles("name", "email")
+                          .addRow("Gunther", "gunther@gu.com")
+                          .addRow("Gunther", "gunther2@gu.com")
+                          .addRow("Paul", "paul@abc.com")
+                          .as()
+                          .groupedAndProjectedMap(ListUtils::first));
+
+    }
+
+    @Test
+    public void testAsGroupedAndAggregatedAndProjectedRows()
+    {
+        assertEquals(Table.newInstance()
+                          .addColumnTitles("name", "email")
+                          .addRow("Gunther", "gunther@gu.com")
+                          .addRow("Paul", "paul@abc.com"),
+                     Table.newInstance()
+                          .addColumnTitles("name", "email")
+                          .addRow("Gunther", "gunther@gu.com")
+                          .addRow("Gunther", "gunther2@gu.com")
+                          .addRow("Paul", "paul@abc.com")
+                          .as()
+                          .groupedAndAggregatedAndProjectedRows(Row::getFirstValue, (name, rows) -> ListUtils.first(rows)));
     }
 
 }
